@@ -51,6 +51,10 @@ desktop.ini
 # If you keep working notes, put them under answers-local/ instead.
 answers-local/
 
+# ── Local working files ─────────────────────────────────────────────
+*.local.*
+*.local.md
+
 # ── Uploads for grader ───────────────────────────────────────────────
 # The grader's private tests are materialised here at CI time.
 # They should never be checked in by students.
