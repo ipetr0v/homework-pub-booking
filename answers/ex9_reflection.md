@@ -4,28 +4,41 @@
 
 ### Your answer
 
-In my Ex7 run (session sess_a382a2149fc1), the planner's second
-subgoal was sg_2 "commit the booking under policy rules" with
-assigned_half: "structured". The signal that drove this was the task
-text naming a deterministic constraint — "under policy rules".
-Sovereign-agent's DefaultPlanner is prompted with the list of
-available halves and their purposes; when subgoal description
-mentions rules/policy/limits, the planner prefers structured.
+In my Ex7 run (`sess_61285be6f7d5`), the bridge ran two rounds. In
+round 1 the planner produced a single subgoal with `assigned_half:
+"loop"` — "find venue near haymarket for 12". The loop half searched
+for venues, found haymarket_tap, then called `handoff_to_structured`
+with reason: "loop half identified a candidate venue; passing to
+structured half for confirmation under policy rules".
 
-This decision is advisory, not physical. The orchestrator respects
-it only because both halves are wired up. If only a loop half
-existed (as in research_assistant), a subgoal assigned to structured
-would go to the void. That's failure mode #4 from the course slides.
+The key phrase is "under policy rules". The executor doesn't decide
+this arbitrarily — the task description says "book a venue", and the
+tool registry includes `handoff_to_structured`. When the loop half
+finishes its research (finding a venue, checking availability), the
+natural next step is validation against booking constraints. That's
+what the structured half is for: deterministic rules that shouldn't
+be left to LLM judgment.
 
-The broader lesson: the planner makes an architectural decision
-based on prose interpretation. Put the rules somewhere the LLM
-cannot mis-assign — in the structured half's Python — and prose
-ambiguity no longer matters.
+The structured half then rejected the booking — party of 12 exceeds
+haymarket_tap's 8-seat cap. The bridge caught the rejection and
+kicked the loop half back in for round 2 with a new plan: "retry
+with larger venue after rejection". This time the loop found
+royal_oak (16 seats), handed off again, and the structured half
+confirmed with ref `BK-7D401E9E`.
+
+What's interesting is that the planner always assigns `"loop"` to the
+subgoal — it doesn't assign `"structured"` directly. The handoff to
+structured happens at the executor level via the `handoff_to_structured`
+tool call. So the planner's role is to decide WHAT to do (find a venue),
+while the executor decides WHEN to hand off (after research is done).
+The structured half never gets "planned into" — it gets "called into"
+by the loop when the loop decides it has enough data for a booking.
 
 ### Citation
 
-- sessions/sess_a382a2149fc1/logs/tickets/tk_*/raw_output.json
-- sessions/sess_a382a2149fc1/logs/trace.jsonl:23
+- `starter/handoff_bridge/run.py` lines 30–53: planner subgoals for rounds 1 and 2 (`assigned_half: "loop"`)
+- `starter/handoff_bridge/run.py` lines 69–87: executor's `handoff_to_structured` call with reason "under policy rules"
+- Ex7 offline output: "Bridge outcome: completed, rounds: 2, summary: structured confirmed in round 2"
 
 ---
 
@@ -78,20 +91,37 @@ That's the whole point of `record_tool_call`.
 
 ### Your answer
 
-I'd keep session directories (Decision 1) as the last thing standing
-and rebuild everything else if forced. The forward-only state machine
-(Decision 2) is important but fragile without directories. Tickets
-(Decision 3) I could rebuild as .jsonl files inside the session.
-Atomic-rename IPC (Decision 5) is replaceable by directory polling.
+If I had to remove one framework primitive and keep the rest, I'd
+drop tickets (the planner's subgoal tracking mechanism) and keep
+session directories.
 
-Session directories are the irreplaceable piece. Losing them:
-cross-tenant data leaks, reconstructing per-run state from logs,
-"how did this session end up this way" becomes SQL archaeology
-instead of cat. The slides compare it to git commits being the
-foundation — you can rebuild merge, diff, blame from commits but
-not commits from the rest. Session directories are commits.
+Session directories are the foundation everything else sits on.
+Looking at my actual runs, each session (`sess_7dc15a1150a7`,
+`sess_7b7e2242d366`, `sess_a8ca30e9ff53`) is a self-contained
+directory with `session.json`, `logs/trace.jsonl`, `ipc/`, and
+`workspace/`. When I needed to debug why Qwen spiraled, I just
+did `cat trace.jsonl` and saw every tool call with timestamps.
+When the Ex7 bridge rejected a booking, the reason was sitting
+in `ipc/handoff_to_structured.json`. No database, no log
+aggregation, just files.
+
+Without session directories, debugging becomes painful. The
+trace events would have to go somewhere (a database? stdout?),
+handoff state would need shared memory or a message queue, and
+you'd lose the ability to `ls` a session to see what happened.
+Every other primitive can be rebuilt on top of directories:
+tickets become `.jsonl` files, IPC becomes file drops, the
+state machine becomes a `state` field in `session.json`.
+
+Tickets, on the other hand, are convenient but not load-bearing.
+The planner produces subgoals and the executor runs them, but
+you could track that with a simple list in the session file.
+The offline Ex7 run doesn't even use real ticket tracking —
+the scripted responses hardcode the subgoal sequence.
 
 ### Citation
 
-- sessions/sess_de44a1b8eb12/ — the directory itself
-- sessions/sess_a382a2149fc1/logs/trace.jsonl
+- `sess_7dc15a1150a7/` — session directory structure I used for debugging Ex5 spirals
+- `sess_7b7e2242d366/session.json` — Ex6 session metadata showing the directory layout
+- `sess_a8ca30e9ff53/logs/trace.jsonl` — Ex8 trace file, accessible via plain `cat`
+
