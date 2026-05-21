@@ -33,26 +33,44 @@ ambiguity no longer matters.
 
 ### Your answer
 
-During Ex5 development my integrity check caught a subtle fabrication
-that manual review missed. In session sess_de44a1b8eb12 the flyer
-claimed "Total: £560" and "Deposit: £112" — plausible numbers that
-followed the deposit formula in catering.json. I skimmed and moved on.
+I ran `make ex5-real` twice and Qwen spiraled both times, it never
+even got to the flyer. But the trace logs are more interesting
+than a clean run would've been.
 
-verify_dataflow returned ok=False with unverified_facts=['£560','£112'].
-The trace showed calculate_cost returned total_gbp=540, deposit=0. The
-real total was £540 under the £300 deposit threshold. The LLM had
-written "£560" plausibly — close enough that a human reviewer wouldn't
-notice without cross-referencing.
+The task prompt spells out
+`venue_search(near='Haymarket', party_size=6, budget_max_gbp=800)`.
+Qwen ignored all of that. In `sess_7dc15a1150a7` it called
+`venue_search` four times with completely made-up params:
 
-The check caught it because it compared against ground truth in
-_TOOL_CALL_LOG, not against "does this look reasonable." The lesson
-generalises: if the validator would pass a human skim, plant a
-deliberately-weird value like £9999 and confirm it's caught.
+```json
+{"tool": "venue_search", "arguments": {"near": "Edinburgh City Centre", "party_size": 10}, "summary": "venue_search(Edinburgh City Centre, party=10): 0 result(s)"}
+{"tool": "venue_search", "arguments": {"near": "Old Town", "party_size": 20}, "summary": "venue_search(Old Town, party=20): 0 result(s)"}
+{"tool": "venue_search", "arguments": {"near": "Grassmarket", "party_size": 15}, "summary": "venue_search(Grassmarket, party=15): 0 result(s)"}
+{"tool": "venue_search", "arguments": {"near": "Edinburgh", "party_size": 50, "budget_max_gbp": 500}, "summary": "venue_search(Edinburgh, party=50): 0 result(s)"}
+```
+
+Party sizes of 10, 20, 15, 50: none of these are 6. All returned
+zero results because the fixture only has a Haymarket match for small
+parties. After four misses it gave up and handed off to structured
+with "Venue search tools are not returning results for any parameters
+tried". It was searching for the wrong thing.
+
+Now imagine if it HAD gotten to `generate_flyer` and just made up some
+costs. That's exactly what `verify_dataflow` catches: it pulls every
+£-amount and temperature from the HTML and checks if any tool actually
+produced that number. It doesn't care if the number looks reasonable,
+it checks if the number has provenance in `_TOOL_CALL_LOG`. So even
+a plausible "£540" would fail if `calculate_cost` was never called.
+
+The big takeaway for me: don't validate outputs by asking "does this
+look right?": validate by asking "did a tool actually say this?"
+That's the whole point of `record_tool_call`.
 
 ### Citation
 
-- sessions/sess_de44a1b8eb12/workspace/flyer.md:12
-- sessions/sess_de44a1b8eb12/logs/trace.jsonl:15
+- `sess_7dc15a1150a7/logs/trace.jsonl` lines 3–8: the four fabricated venue_search calls
+- `sess_7dc15a1150a7/ipc/handoff_to_structured.json`: handoff with all failed attempts listed
+- `sess_474c8686d84a/logs/trace.jsonl` line 3: first run, same pattern: `near='Old Town', party_size=50`
 
 ---
 
