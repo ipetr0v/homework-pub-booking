@@ -46,48 +46,33 @@ by the loop when the loop decides it has enough data for a booking.
 
 ### Your answer
 
-I ran `make ex5-real` twice and Qwen spiraled both times — it never
-even got to the flyer. But the trace logs are more interesting
-than a clean run would've been.
+In early real-mode runs (`sess_7dc15a1150a7`), Qwen3-32B ignored
+the task prompt and called `venue_search` four times with fabricated
+params: party sizes of 10, 20, 15, 50 across areas like "Edinburgh
+City Centre" and "Grassmarket". All returned zero results, and the
+agent spiraled without producing a flyer.
 
-The task prompt spells out
-`venue_search(near='Haymarket', party_size=6, budget_max_gbp=800)`.
-Qwen ignored all of that. In `sess_7dc15a1150a7` it called
-`venue_search` four times with completely made-up params:
+If it HAD reached `generate_flyer` with made-up costs,
+`verify_dataflow` would catch it: it pulls every £-amount and
+temperature from the HTML and checks if any tool actually produced
+that number. It checks provenance in `_TOOL_CALL_LOG`, not
+plausibility — so even a reasonable-looking "£540" fails if
+`calculate_cost` never returned it.
 
-```json
-{"tool": "venue_search", "arguments": {"near": "Edinburgh City Centre", "party_size": 10}, "summary": "venue_search(Edinburgh City Centre, party=10): 0 result(s)"}
-{"tool": "venue_search", "arguments": {"near": "Old Town", "party_size": 20}, "summary": "venue_search(Old Town, party=20): 0 result(s)"}
-{"tool": "venue_search", "arguments": {"near": "Grassmarket", "party_size": 15}, "summary": "venue_search(Grassmarket, party=15): 0 result(s)"}
-{"tool": "venue_search", "arguments": {"near": "Edinburgh", "party_size": 50, "budget_max_gbp": 500}, "summary": "venue_search(Edinburgh, party=50): 0 result(s)"}
-```
-
-Party sizes of 10, 20, 15, 50: none of these are 6. All returned
-zero results because the fixture only has a Haymarket match for small
-parties. After four misses it gave up and handed off to structured
-with "Venue search tools are not returning results for any parameters
-tried".
-
-Now imagine if it HAD gotten to `generate_flyer` and just made up some
-costs. That's exactly what `verify_dataflow` catches: it pulls every
-£-amount and temperature from the HTML and checks if any tool actually
-produced that number. It doesn't care if the number looks reasonable —
-it checks if the number has provenance in `_TOOL_CALL_LOG`. So even
-a plausible "£540" would fail if `calculate_cost` was never called.
-
-The office hours highlighted a deeper problem: the original integrity
-check was self-verifying. When `generate_flyer` writes `total_gbp=540`
-into `_TOOL_CALL_LOG` via `record_tool_call`, and then `verify_dataflow`
-scans that same log, it finds 540 in the flyer tool's own arguments.
-The fact verifies its own existence. The fix: verify against specific
-tool outputs — venue facts must come from `venue_search`, cost facts
-from `calculate_cost`, weather facts from `get_weather`. Never from
-`generate_flyer`'s own entry.
+After fixing the spiral (anti-spiral guard + runtime overrides for
+cross-subgoal data injection), the successful run
+`sess_9fd4544aad92` verified 5 facts against tool outputs: venue
+name, address, weather condition, temperature, and total cost. All
+traced back to actual tool calls. This confirmed the integrity
+check works end-to-end: it's not just catching fabrication in
+theory — it's the reason we can trust the flyer in the successful
+run. Without `verify_dataflow`, we'd have no way to distinguish
+the correct flyer from one with plausible but wrong numbers.
 
 ### Citation
 
 - `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/trace.jsonl` lines 3–8: the four fabricated venue_search calls
-- `sessions/examples/ex5-edinburgh-research/sess_474c8686d84a/logs/trace.jsonl` line 3: first run, same spiral pattern
+- `sessions/examples/ex5-edinburgh-research/sess_9fd4544aad92/logs/trace.jsonl`: successful run, 5 facts verified
 - `starter/edinburgh_research/integrity.py` — `verify_dataflow` with per-tool fact verification
 
 ---
@@ -98,38 +83,33 @@ from `calculate_cost`, weather facts from `get_weather`. Never from
 
 If I were shipping this agent to a real pub-booking business next week,
 the first production failure I'd expect is the LLM calling `venue_search`
-with hallucinated parameters — areas and party sizes it invented rather
-than what the customer specified. I saw this firsthand: in
-`sess_7dc15a1150a7` and `sess_474c8686d84a`, Qwen3-32B ignored the
-task prompt entirely and searched for "Edinburgh City Centre" with
-party_size=50 instead of "Haymarket" with party_size=6. Every call
-returned zero results, the agent spiraled, and the customer got nothing.
+with hallucinated parameters. I saw this firsthand: in
+`sess_7dc15a1150a7`, Qwen3-32B searched for "Edinburgh City Centre"
+with party_size=50 instead of "Haymarket" with party_size=6. Every
+call returned zero results and the customer got nothing.
 
 The sovereign-agent primitive that would surface this failure is the
-**ticket state machine**. Each executor subgoal runs inside a ticket
-(`tk_62bfc85f` in the spiral session, for example). A ticket transitions
-through states: `pending → running → success/failed`. In that spiral
-run, the ticket's manifest shows `tool_calls: 6` and
-`handoff_requested: true` — the executor made 6 tool calls with zero
-useful results before giving up.
+**ticket state machine**. In the spiral session, ticket `tk_62bfc85f`
+shows `tool_calls: 6` and `handoff_requested: true` — the executor
+made 6 calls with zero useful results. In production, you'd monitor
+ticket state transitions: if tool-call count exceeds 2× the planner's
+estimate with zero successes, force-fail the ticket with a diagnostic.
 
-In production, you'd wire a monitor on ticket state transitions: if a
-ticket's tool-call count exceeds 2× the planner's estimate with zero
-successful results, the ticket should be force-failed with a diagnostic
-explaining what the LLM did wrong. This is exactly the "executor
-improvises when given an under-specified task" failure from the office
-hours slides (Finding 5). The ticket state machine gives you the
-hook — it already tracks `estimated_tool_calls` vs actual calls in
-the ticket result. You just need to enforce the invariant rather than
-letting the executor run indefinitely.
+I fixed this with three layers: (1) an anti-spiral guard capping
+`venue_search` at 3 calls, (2) patching the executor loop to inject sg_1's tool
+outputs into sg_2's description (solving cross-subgoal data loss),
+and (3) prescriptive system prompts with exact tool-call sequences.
+The fix worked: `sess_9fd4544aad92` ran end-to-end with Qwen calling
+all four tools correctly and producing a verified flyer.
 
-The anti-spiral guard I added to `venue_search` (cap at 3 calls) is
-a tool-level mitigation, but the ticket state machine is the
-framework-level primitive that should catch this category of failure
-generically across all tools.
+But these are application-level mitigations. The ticket state machine
+is the framework-level primitive that should catch this failure
+generically — it already tracks `estimated_tool_calls` vs actual calls.
+You just need to enforce the invariant rather than letting the executor
+run indefinitely.
 
 ### Citation
 
-- `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/trace.jsonl`: 4 fabricated venue_search calls with zero successes
-- `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/tickets/tk_62bfc85f/manifest.json`: executor ticket showing `tool_calls: 6`, `handoff_requested: true` — spiral evidence
-- `starter/edinburgh_research/tools.py` lines 50–57: anti-spiral guard as tool-level mitigation
+- `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/tickets/tk_62bfc85f/manifest.json`: `tool_calls: 6`, `handoff_requested: true`
+- `sessions/examples/ex5-edinburgh-research/sess_9fd4544aad92/logs/trace.jsonl`: successful run after fixes
+- `starter/edinburgh_research/run.py` lines 43–310: runtime patches for executor loop and subgoal data passing

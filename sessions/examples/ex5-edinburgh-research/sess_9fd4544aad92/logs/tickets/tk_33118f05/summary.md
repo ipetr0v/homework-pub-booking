@@ -1,0 +1,1 @@
+Executor completed subgoal sg_2 in 1 turn(s). Made 2 tool call(s): generate_flyer, complete_task.

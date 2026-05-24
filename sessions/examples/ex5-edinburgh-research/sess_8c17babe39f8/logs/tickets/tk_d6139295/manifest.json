@@ -1,0 +1,20 @@
+{
+  "ticket_id": "tk_d6139295",
+  "operation": "executor.run_subgoal/sg_1",
+  "started_at": "2026-05-24T19:22:18.605251+00:00",
+  "completed_at": "2026-05-24T19:22:18.618440+00:00",
+  "duration_ms": 13,
+  "outputs": [
+    {
+      "path": "/usr/local/google/home/ivanpetrov/src/homework-pub-booking/sessions/examples/ex5-edinburgh-research/sess_8c17babe39f8/logs/tickets/tk_d6139295/raw_output.json",
+      "sha256": "ec15916424b20dc9253233623978a0906f4175c8d1d37ad720545e72d57c4549",
+      "size_bytes": 1750,
+      "content_type": "application/json"
+    }
+  ],
+  "metrics": {
+    "tool_calls": 5,
+    "turns_used": 3,
+    "handoff_requested": false
+  }
+}
