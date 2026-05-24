@@ -45,7 +45,16 @@ def venue_search(near: str, party_size: int, budget_max_gbp: int = 1000) -> Tool
 
     from sovereign_agent.errors import ToolError
 
-    from starter.edinburgh_research.integrity import record_tool_call
+    from starter.edinburgh_research.integrity import _TOOL_CALL_LOG, record_tool_call
+
+    # Anti-spiral guard: stop after 3 searches
+    search_count = sum(1 for r in _TOOL_CALL_LOG if r.tool_name == "venue_search")
+    if search_count >= 3:
+        return ToolResult(
+            success=False,
+            output={"error": "too_many_searches", "count": search_count},
+            summary="STOP calling venue_search; use the results you already have.",
+        )
 
     venues_path = _SAMPLE_DATA / "venues.json"
     if not venues_path.exists():
@@ -258,12 +267,14 @@ def calculate_cost(
     subtotal = base_per_head * venue_mult * party_size * max(1, duration_hours)
     service_pct = catering["service_charge_percent"]
     service = subtotal * service_pct / 100
-    total = subtotal + service + hire_fee + min_spend
+    # min_spend is a floor, not an addition (office hours finding #2)
+    effective_subtotal = max(subtotal, min_spend)
+    total = effective_subtotal + service + hire_fee
 
-    # Convert to int
-    subtotal_gbp = int(subtotal)
-    service_gbp = int(service)
-    total_gbp = int(total)
+    # Convert to int via round (consistent rounding per student discussion)
+    subtotal_gbp = round(subtotal)
+    service_gbp = round(service)
+    total_gbp = round(total)
 
     # Deposit policy
     if total_gbp < 300:

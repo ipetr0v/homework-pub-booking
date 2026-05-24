@@ -88,8 +88,8 @@ def _build_fake_client() -> FakeLLMClient:
                 "party_size": 6,
                 "condition": "cloudy",
                 "temperature_c": 12,
-                "total_gbp": 540,
-                "deposit_required_gbp": 0,
+                "total_gbp": 356,
+                "deposit_required_gbp": 71,
             }
         },
     )
@@ -195,7 +195,7 @@ async def run_scenario(real: bool) -> int:
     # populate _TOOL_CALL_LOG before the real scenario runs.
     clear_log()
 
-    with example_sessions_dir("ex5-edinburgh-research", persist=real) as sessions_root:
+    with example_sessions_dir("ex5-edinburgh-research", persist=True) as sessions_root:
         session = create_session(
             scenario="edinburgh-research",
             task=(
@@ -241,10 +241,32 @@ async def run_scenario(real: bool) -> int:
             client = _build_fake_client()
             planner_model = executor_model = "fake"
 
+        _PLANNER_SYSTEM = (
+            "You are a planner for an Edinburgh pub research agent.\n"
+            "Produce EXACTLY 2 subgoals:\n"
+            "  sg_1: research Edinburgh venues near Haymarket for a party of 6, "
+            "call venue_search, get_weather, calculate_cost\n"
+            "  sg_2: produce an HTML flyer with the chosen venue, weather, and cost, "
+            "call generate_flyer then complete_task\n"
+            "Both assigned_half: loop. sg_2 depends_on sg_1.\n"
+            "Do NOT add any other subgoals.\n"
+        )
+        _EXECUTOR_SYSTEM = (
+            "You are an executor for an Edinburgh pub research agent.\n"
+            "RULES:\n"
+            "1. Call tools EXACTLY as described in their docstrings.\n"
+            "2. For venue_search use: near='Haymarket', party_size=6\n"
+            "3. For get_weather use: city='edinburgh', date='2026-04-25'\n"
+            "4. For calculate_cost use the venue_id from venue_search results.\n"
+            "5. Do NOT call complete_task until generate_flyer has run.\n"
+            "6. Do NOT invent or fabricate tool arguments.\n"
+            "7. If a tool returns results, USE those results. Do NOT retry.\n"
+        )
+
         tools = build_tool_registry(session)
         half = LoopHalf(
-            planner=DefaultPlanner(model=planner_model, client=client),
-            executor=DefaultExecutor(model=executor_model, client=client, tools=tools),  # type: ignore[arg-type]
+            planner=DefaultPlanner(model=planner_model, client=client, system_prompt=_PLANNER_SYSTEM),
+            executor=DefaultExecutor(model=executor_model, client=client, tools=tools, system_prompt=_EXECUTOR_SYSTEM),  # type: ignore[arg-type]
         )
 
         result = await half.run(session, {"task": "research Edinburgh venue and write flyer"})
