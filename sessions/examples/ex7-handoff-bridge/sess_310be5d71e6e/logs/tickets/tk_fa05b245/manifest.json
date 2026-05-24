@@ -1,0 +1,20 @@
+{
+  "ticket_id": "tk_fa05b245",
+  "operation": "executor.run_subgoal/sg_1",
+  "started_at": "2026-05-24T18:32:58.969972+00:00",
+  "completed_at": "2026-05-24T18:32:58.981700+00:00",
+  "duration_ms": 11,
+  "outputs": [
+    {
+      "path": "/usr/local/google/home/ivanpetrov/src/homework-pub-booking/sessions/examples/ex7-handoff-bridge/sess_310be5d71e6e/logs/tickets/tk_fa05b245/raw_output.json",
+      "sha256": "9c4dd4d85668b6b47b6b11e601cfde508b1617af216e73e58b71b6dad289d0e5",
+      "size_bytes": 1510,
+      "content_type": "application/json"
+    }
+  ],
+  "metrics": {
+    "tool_calls": 2,
+    "turns_used": 2,
+    "handoff_requested": true
+  }
+}

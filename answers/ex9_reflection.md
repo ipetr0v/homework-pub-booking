@@ -4,7 +4,7 @@
 
 ### Your answer
 
-In my Ex7 run (`sess_61285be6f7d5`), the bridge ran two rounds. In
+In my Ex7 run (`sess_8ebb579c26f9`), the bridge ran two rounds. In
 round 1 the planner produced a single subgoal with `assigned_half:
 "loop"` — "find venue near haymarket for 12". The loop half searched
 for venues, found haymarket_tap, then called `handoff_to_structured`
@@ -24,7 +24,7 @@ haymarket_tap's 8-seat cap. The bridge caught the rejection and
 kicked the loop half back in for round 2 with a new plan: "retry
 with larger venue after rejection". This time the loop found
 royal_oak (16 seats), handed off again, and the structured half
-confirmed with ref `BK-7D401E9E`.
+confirmed the booking.
 
 What's interesting is that the planner always assigns `"loop"` to the
 subgoal — it doesn't assign `"structured"` directly. The handoff to
@@ -36,9 +36,9 @@ by the loop when the loop decides it has enough data for a booking.
 
 ### Citation
 
+- `sessions/examples/ex7-handoff-bridge/sess_8ebb579c26f9/logs/trace.jsonl`: round 1 and round 2 traces
 - `starter/handoff_bridge/run.py` lines 30–53: planner subgoals for rounds 1 and 2 (`assigned_half: "loop"`)
 - `starter/handoff_bridge/run.py` lines 69–87: executor's `handoff_to_structured` call with reason "under policy rules"
-- Ex7 offline output: "Bridge outcome: completed, rounds: 2, summary: structured confirmed in round 2"
 
 ---
 
@@ -46,7 +46,7 @@ by the loop when the loop decides it has enough data for a booking.
 
 ### Your answer
 
-I ran `make ex5-real` twice and Qwen spiraled both times, it never
+I ran `make ex5-real` twice and Qwen spiraled both times — it never
 even got to the flyer. But the trace logs are more interesting
 than a clean run would've been.
 
@@ -66,62 +66,70 @@ Party sizes of 10, 20, 15, 50: none of these are 6. All returned
 zero results because the fixture only has a Haymarket match for small
 parties. After four misses it gave up and handed off to structured
 with "Venue search tools are not returning results for any parameters
-tried". It was searching for the wrong thing.
+tried".
 
 Now imagine if it HAD gotten to `generate_flyer` and just made up some
 costs. That's exactly what `verify_dataflow` catches: it pulls every
 £-amount and temperature from the HTML and checks if any tool actually
-produced that number. It doesn't care if the number looks reasonable,
+produced that number. It doesn't care if the number looks reasonable —
 it checks if the number has provenance in `_TOOL_CALL_LOG`. So even
 a plausible "£540" would fail if `calculate_cost` was never called.
 
-The big takeaway for me: don't validate outputs by asking "does this
-look right?": validate by asking "did a tool actually say this?"
-That's the whole point of `record_tool_call`.
+The office hours highlighted a deeper problem: the original integrity
+check was self-verifying. When `generate_flyer` writes `total_gbp=540`
+into `_TOOL_CALL_LOG` via `record_tool_call`, and then `verify_dataflow`
+scans that same log, it finds 540 in the flyer tool's own arguments.
+The fact verifies its own existence. The fix: verify against specific
+tool outputs — venue facts must come from `venue_search`, cost facts
+from `calculate_cost`, weather facts from `get_weather`. Never from
+`generate_flyer`'s own entry.
 
 ### Citation
 
-- `sess_7dc15a1150a7/logs/trace.jsonl` lines 3–8: the four fabricated venue_search calls
-- `sess_7dc15a1150a7/ipc/handoff_to_structured.json`: handoff with all failed attempts listed
-- `sess_474c8686d84a/logs/trace.jsonl` line 3: first run, same pattern: `near='Old Town', party_size=50`
+- `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/trace.jsonl` lines 3–8: the four fabricated venue_search calls
+- `sessions/examples/ex5-edinburgh-research/sess_474c8686d84a/logs/trace.jsonl` line 3: first run, same spiral pattern
+- `starter/edinburgh_research/integrity.py` — `verify_dataflow` with per-tool fact verification
 
 ---
 
-## Q3 — Removing one framework primitive
+## Q3 — First production failure
 
 ### Your answer
 
-If I had to remove one framework primitive and keep the rest, I'd
-drop tickets (the planner's subgoal tracking mechanism) and keep
-session directories.
+If I were shipping this agent to a real pub-booking business next week,
+the first production failure I'd expect is the LLM calling `venue_search`
+with hallucinated parameters — areas and party sizes it invented rather
+than what the customer specified. I saw this firsthand: in
+`sess_7dc15a1150a7` and `sess_474c8686d84a`, Qwen3-32B ignored the
+task prompt entirely and searched for "Edinburgh City Centre" with
+party_size=50 instead of "Haymarket" with party_size=6. Every call
+returned zero results, the agent spiraled, and the customer got nothing.
 
-Session directories are the foundation everything else sits on.
-Looking at my actual runs, each session (`sess_7dc15a1150a7`,
-`sess_7b7e2242d366`, `sess_a8ca30e9ff53`) is a self-contained
-directory with `session.json`, `logs/trace.jsonl`, `ipc/`, and
-`workspace/`. When I needed to debug why Qwen spiraled, I just
-did `cat trace.jsonl` and saw every tool call with timestamps.
-When the Ex7 bridge rejected a booking, the reason was sitting
-in `ipc/handoff_to_structured.json`. No database, no log
-aggregation, just files.
+The sovereign-agent primitive that would surface this failure is the
+**ticket state machine**. Each executor subgoal runs inside a ticket
+(`tk_62bfc85f` in the spiral session, for example). A ticket transitions
+through states: `pending → running → success/failed`. In that spiral
+run, the ticket's manifest shows `tool_calls: 6` and
+`handoff_requested: true` — the executor made 6 tool calls with zero
+useful results before giving up.
 
-Without session directories, debugging becomes painful. The
-trace events would have to go somewhere (a database? stdout?),
-handoff state would need shared memory or a message queue, and
-you'd lose the ability to `ls` a session to see what happened.
-Every other primitive can be rebuilt on top of directories:
-tickets become `.jsonl` files, IPC becomes file drops, the
-state machine becomes a `state` field in `session.json`.
+In production, you'd wire a monitor on ticket state transitions: if a
+ticket's tool-call count exceeds 2× the planner's estimate with zero
+successful results, the ticket should be force-failed with a diagnostic
+explaining what the LLM did wrong. This is exactly the "executor
+improvises when given an under-specified task" failure from the office
+hours slides (Finding 5). The ticket state machine gives you the
+hook — it already tracks `estimated_tool_calls` vs actual calls in
+the ticket result. You just need to enforce the invariant rather than
+letting the executor run indefinitely.
 
-Tickets, on the other hand, are convenient but not load-bearing.
-The planner produces subgoals and the executor runs them, but
-you could track that with a simple list in the session file.
-The offline Ex7 run doesn't even use real ticket tracking —
-the scripted responses hardcode the subgoal sequence.
+The anti-spiral guard I added to `venue_search` (cap at 3 calls) is
+a tool-level mitigation, but the ticket state machine is the
+framework-level primitive that should catch this category of failure
+generically across all tools.
 
 ### Citation
 
-- `sess_7dc15a1150a7/` — session directory structure I used for debugging Ex5 spirals
-- `sess_7b7e2242d366/session.json` — Ex6 session metadata showing the directory layout
-- `sess_a8ca30e9ff53/logs/trace.jsonl` — Ex8 trace file, accessible via plain `cat`
-
+- `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/trace.jsonl`: 4 fabricated venue_search calls with zero successes
+- `sessions/examples/ex5-edinburgh-research/sess_7dc15a1150a7/logs/tickets/tk_62bfc85f/manifest.json`: executor ticket showing `tool_calls: 6`, `handoff_requested: true` — spiral evidence
+- `starter/edinburgh_research/tools.py` lines 50–57: anti-spiral guard as tool-level mitigation

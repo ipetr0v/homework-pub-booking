@@ -1,0 +1,44 @@
+{
+  "subgoal_id": "sg_1",
+  "success": true,
+  "final_answer": "(handoff requested)",
+  "tool_calls_made": [
+    {
+      "name": "venue_search",
+      "arguments": {
+        "near": "Old Town",
+        "party_size": 50,
+        "budget_max_gbp": 1000
+      },
+      "success": true,
+      "summary": "venue_search(Old Town, party=50): 0 result(s)",
+      "requires_human_approval": false
+    },
+    {
+      "name": "handoff_to_structured",
+      "arguments": {
+        "reason": "No venues found matching criteria",
+        "context": "Venue search for Old Town with party size 50 returned 0 results",
+        "data": {
+          "near": "Old Town",
+          "party_size": 50,
+          "budget_max_gbp": 1000
+        }
+      },
+      "success": true,
+      "summary": "handoff to structured half: No venues found matching criteria",
+      "requires_human_approval": false
+    }
+  ],
+  "turns_used": 2,
+  "handoff_requested": true,
+  "handoff_payload": {
+    "reason": "No venues found matching criteria",
+    "context": "Venue search for Old Town with party size 50 returned 0 results",
+    "data": {
+      "near": "Old Town",
+      "party_size": 50,
+      "budget_max_gbp": 1000
+    }
+  }
+}

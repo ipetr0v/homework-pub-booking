@@ -241,7 +241,7 @@ async def run_scenario(real: bool) -> int:
             client = _build_fake_client()
             planner_model = executor_model = "fake"
 
-        _PLANNER_SYSTEM = (
+        planner_system = (
             "You are a planner for an Edinburgh pub research agent.\n"
             "Produce EXACTLY 2 subgoals:\n"
             "  sg_1: research Edinburgh venues near Haymarket for a party of 6, "
@@ -251,7 +251,7 @@ async def run_scenario(real: bool) -> int:
             "Both assigned_half: loop. sg_2 depends_on sg_1.\n"
             "Do NOT add any other subgoals.\n"
         )
-        _EXECUTOR_SYSTEM = (
+        executor_system = (
             "You are an executor for an Edinburgh pub research agent.\n"
             "RULES:\n"
             "1. Call tools EXACTLY as described in their docstrings.\n"
@@ -265,8 +265,12 @@ async def run_scenario(real: bool) -> int:
 
         tools = build_tool_registry(session)
         half = LoopHalf(
-            planner=DefaultPlanner(model=planner_model, client=client, system_prompt=_PLANNER_SYSTEM),
-            executor=DefaultExecutor(model=executor_model, client=client, tools=tools, system_prompt=_EXECUTOR_SYSTEM),  # type: ignore[arg-type]
+            planner=DefaultPlanner(
+                model=planner_model, client=client, system_prompt=planner_system
+            ),
+            executor=DefaultExecutor(
+                model=executor_model, client=client, tools=tools, system_prompt=executor_system
+            ),  # type: ignore[arg-type]
         )
 
         result = await half.run(session, {"task": "research Edinburgh venue and write flyer"})

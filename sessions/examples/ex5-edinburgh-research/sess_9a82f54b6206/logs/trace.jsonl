@@ -1,0 +1,2 @@
+{"event_type": "planner.called", "actor": "default", "timestamp": "2026-05-24T18:06:11.589507+00:00", "payload": {"task_preview": "research Edinburgh venue and write flyer"}}
+{"event_type": "planner.produced_subgoals", "actor": "default", "timestamp": "2026-05-24T18:06:18.608424+00:00", "payload": {"num_subgoals": 2}}

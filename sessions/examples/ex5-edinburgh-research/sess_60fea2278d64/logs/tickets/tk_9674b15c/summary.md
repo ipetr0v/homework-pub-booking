@@ -1,0 +1,1 @@
+Error [SA_VAL_INVALID_PLANNER_OUTPUT]: subgoal #0 missing required field: 'description'

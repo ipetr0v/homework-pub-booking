@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "from_half": "loop",
+  "to_half": "structured",
+  "written_at": "2026-05-21T11:55:15.749856+00:00",
+  "session_id": "sess_474c8686d84a",
+  "reason": "No venues found matching criteria",
+  "context": "Venue search for Old Town with party size 50 returned 0 results",
+  "data": {
+    "near": "Old Town",
+    "party_size": 50,
+    "budget_max_gbp": 1000
+  },
+  "return_instructions": ""
+}

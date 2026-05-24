@@ -1,0 +1,8 @@
+{"event_type": "voice.utterance_in", "actor": "user", "timestamp": "2026-05-24T18:25:54.632212+00:00", "payload": {"text": "Hi Alasdair, I'd like to book the Haymarket Tap for 6 people this Friday at 7:30pm", "turn": 0, "mode": "text"}}
+{"event_type": "voice.utterance_out", "actor": "manager", "timestamp": "2026-05-24T18:26:09.500477+00:00", "payload": {"text": "Aye, we can do that. I'll pencil you in for Friday at 7:30pm. What's the contact number?", "turn": 0, "mode": "text"}}
+{"event_type": "voice.utterance_in", "actor": "user", "timestamp": "2026-05-24T18:26:15.692333+00:00", "payload": {"text": "We'd like bar snacks and about 3 hours. What's the deposit looking like?", "turn": 1, "mode": "text"}}
+{"event_type": "voice.utterance_out", "actor": "manager", "timestamp": "2026-05-24T18:26:24.238952+00:00", "payload": {"text": "Deposit's \u00a3200. Aye, that's fine. Still a go for Friday at 7:30pm. What's the contact number?", "turn": 1, "mode": "text"}}
+{"event_type": "voice.utterance_in", "actor": "user", "timestamp": "2026-05-24T18:26:31.651129+00:00", "payload": {"text": "That sounds good, let's go ahead and confirm it", "turn": 2, "mode": "text"}}
+{"event_type": "voice.utterance_out", "actor": "manager", "timestamp": "2026-05-24T18:26:33.030819+00:00", "payload": {"text": "Confirmed for Friday at 7:30pm. I'll need a contact number, laddie.", "turn": 2, "mode": "text"}}
+{"event_type": "voice.utterance_in", "actor": "user", "timestamp": "2026-05-24T18:26:49.807565+00:00", "payload": {"text": "It's 07712 345678. Cheers!", "turn": 3, "mode": "text"}}
+{"event_type": "voice.utterance_out", "actor": "manager", "timestamp": "2026-05-24T18:26:50.560531+00:00", "payload": {"text": "Got it, 07712 345678. See you Friday.", "turn": 3, "mode": "text"}}

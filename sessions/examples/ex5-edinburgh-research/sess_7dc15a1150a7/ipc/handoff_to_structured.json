@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "from_half": "loop",
+  "to_half": "structured",
+  "written_at": "2026-05-21T12:05:02.483062+00:00",
+  "session_id": "sess_7dc15a1150a7",
+  "reason": "Venue search tools are not returning results for any parameters tried.",
+  "context": "Subgoal requires detailed venue info but all venue_search attempts returned 0 results. No files exist in workspace to provide alternative data.",
+  "data": {
+    "attempts": [
+      {
+        "near": "Edinburgh City Centre",
+        "party_size": 10
+      },
+      {
+        "near": "Old Town",
+        "party_size": 20
+      },
+      {
+        "near": "Grassmarket",
+        "party_size": 15
+      },
+      {
+        "near": "Edinburgh",
+        "party_size": 50,
+        "budget_max_gbp": 500
+      }
+    ]
+  },
+  "return_instructions": ""
+}

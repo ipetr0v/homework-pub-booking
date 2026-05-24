@@ -1,0 +1,115 @@
+{
+  "subgoal_id": "sg_1",
+  "success": true,
+  "final_answer": "(handoff requested)",
+  "tool_calls_made": [
+    {
+      "name": "venue_search",
+      "arguments": {
+        "near": "Edinburgh City Centre",
+        "party_size": 10
+      },
+      "success": true,
+      "summary": "venue_search(Edinburgh City Centre, party=10): 0 result(s)",
+      "requires_human_approval": false
+    },
+    {
+      "name": "venue_search",
+      "arguments": {
+        "near": "Old Town",
+        "party_size": 20
+      },
+      "success": true,
+      "summary": "venue_search(Old Town, party=20): 0 result(s)",
+      "requires_human_approval": false
+    },
+    {
+      "name": "venue_search",
+      "arguments": {
+        "near": "Grassmarket",
+        "party_size": 15
+      },
+      "success": true,
+      "summary": "venue_search(Grassmarket, party=15): 0 result(s)",
+      "requires_human_approval": false
+    },
+    {
+      "name": "venue_search",
+      "arguments": {
+        "near": "Edinburgh",
+        "party_size": 50,
+        "budget_max_gbp": 500
+      },
+      "success": true,
+      "summary": "venue_search(Edinburgh, party=50): 0 result(s)",
+      "requires_human_approval": false
+    },
+    {
+      "name": "list_files",
+      "arguments": {
+        "path": "."
+      },
+      "success": true,
+      "summary": ".: 0 entries",
+      "requires_human_approval": false
+    },
+    {
+      "name": "handoff_to_structured",
+      "arguments": {
+        "reason": "Venue search tools are not returning results for any parameters tried.",
+        "context": "Subgoal requires detailed venue info but all venue_search attempts returned 0 results. No files exist in workspace to provide alternative data.",
+        "data": {
+          "attempts": [
+            {
+              "near": "Edinburgh City Centre",
+              "party_size": 10
+            },
+            {
+              "near": "Old Town",
+              "party_size": 20
+            },
+            {
+              "near": "Grassmarket",
+              "party_size": 15
+            },
+            {
+              "near": "Edinburgh",
+              "party_size": 50,
+              "budget_max_gbp": 500
+            }
+          ]
+        }
+      },
+      "success": true,
+      "summary": "handoff to structured half: Venue search tools are not returning results for any parameters tried.",
+      "requires_human_approval": false
+    }
+  ],
+  "turns_used": 6,
+  "handoff_requested": true,
+  "handoff_payload": {
+    "reason": "Venue search tools are not returning results for any parameters tried.",
+    "context": "Subgoal requires detailed venue info but all venue_search attempts returned 0 results. No files exist in workspace to provide alternative data.",
+    "data": {
+      "attempts": [
+        {
+          "near": "Edinburgh City Centre",
+          "party_size": 10
+        },
+        {
+          "near": "Old Town",
+          "party_size": 20
+        },
+        {
+          "near": "Grassmarket",
+          "party_size": 15
+        },
+        {
+          "near": "Edinburgh",
+          "party_size": 50,
+          "budget_max_gbp": 500
+        }
+      ]
+    }
+  }
+}

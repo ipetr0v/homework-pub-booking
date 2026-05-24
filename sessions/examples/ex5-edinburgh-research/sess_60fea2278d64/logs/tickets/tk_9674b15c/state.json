@@ -1,0 +1,9 @@
+{
+  "ticket_id": "tk_9674b15c",
+  "operation": "planner.plan",
+  "state": "error",
+  "started_at": "2026-05-24T18:08:22.560043+00:00",
+  "completed_at": "2026-05-24T18:08:35.668446+00:00",
+  "error_code": "SA_VAL_INVALID_PLANNER_OUTPUT",
+  "error_message": "subgoal #0 missing required field: 'description'"
+}

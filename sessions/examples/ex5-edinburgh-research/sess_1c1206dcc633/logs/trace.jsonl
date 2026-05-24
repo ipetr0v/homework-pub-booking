@@ -1,0 +1,3 @@
+{"event_type": "planner.called", "actor": "default", "timestamp": "2026-05-24T18:09:17.336635+00:00", "payload": {"task_preview": "research Edinburgh venue and write flyer"}}
+{"event_type": "planner.produced_subgoals", "actor": "default", "timestamp": "2026-05-24T18:09:34.768267+00:00", "payload": {"num_subgoals": 2}}
+{"event_type": "executor.tool_called", "actor": "default", "ticket_id": null, "timestamp": "2026-05-24T18:10:12.627547+00:00", "payload": {"tool": "venue_search", "arguments": {"near": "Haymarket", "party_size": 6}, "success": true, "summary": "venue_search(Haymarket, party=6): 1 result(s)"}}

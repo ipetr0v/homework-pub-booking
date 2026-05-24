@@ -1,0 +1,4 @@
+{"event_type": "voice.utterance_in", "actor": "user", "timestamp": "2026-05-21T19:42:51.340646+00:00", "payload": {"text": "Hi, I'd like to book a table for 6 people this Friday at 7:30pm", "turn": 0, "mode": "text"}}
+{"event_type": "voice.utterance_out", "actor": "manager", "timestamp": "2026-05-21T19:42:52.880961+00:00", "payload": {"text": "Aye, we can do that. I'll pencil you in for Friday at 7:30pm. What's the contact number?", "turn": 0, "mode": "text"}}
+{"event_type": "voice.utterance_in", "actor": "user", "timestamp": "2026-05-21T19:43:18.460875+00:00", "payload": {"text": "It's 07712 345678. We'd also like bar snacks if possible.", "turn": 1, "mode": "text"}}
+{"event_type": "voice.utterance_out", "actor": "manager", "timestamp": "2026-05-21T19:43:19.328189+00:00", "payload": {"text": "Bar snacks are fine. I'll note that down. See you Friday at 7:30pm.", "turn": 1, "mode": "text"}}

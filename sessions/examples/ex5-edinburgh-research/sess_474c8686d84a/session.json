@@ -1,0 +1,42 @@
+{
+  "session_id": "sess_474c8686d84a",
+  "version": 1,
+  "created_at": "2026-05-21T11:54:26.579699+00:00",
+  "updated_at": "2026-05-21T11:54:52.775855+00:00",
+  "scenario": "edinburgh-research",
+  "state": "executing",
+  "user_id": null,
+  "current_half": "loop",
+  "planner": {
+    "subgoals": [
+      {
+        "id": "sg_1",
+        "description": "Research and select a suitable Edinburgh venue for the event, compiling key details (name, location, capacity, pricing, amenities)",
+        "success_criterion": "A single venue selected with all necessary details documented in a structured format",
+        "estimated_tool_calls": 3,
+        "depends_on": [],
+        "assigned_half": "loop",
+        "status": "pending"
+      },
+      {
+        "id": "sg_2",
+        "description": "Create a promotional flyer using the selected venue's information",
+        "success_criterion": "A complete flyer document containing venue details, event information, and contact details",
+        "estimated_tool_calls": 2,
+        "depends_on": [
+          "sg_1"
+        ],
+        "assigned_half": "loop",
+        "status": "pending"
+      }
+    ]
+  },
+  "executor": {},
+  "structured": {},
+  "memory": {},
+  "handoff_history": [],
+  "bare_mode": false,
+  "config_overrides": {},
+  "result": null,
+  "resumed_from": null
+}
